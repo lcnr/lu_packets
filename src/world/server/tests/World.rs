@@ -1,3 +1,0 @@
-LuMessage::World(
-	WorldMessage::CharacterListRequest,
-)

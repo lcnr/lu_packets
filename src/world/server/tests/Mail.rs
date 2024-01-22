@@ -1,3 +1,0 @@
-WorldMessage::Mail(
-	Mail::ListRequest,
-)

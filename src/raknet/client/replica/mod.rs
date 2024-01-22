@@ -1,12 +1,11 @@
 use std::fmt::Debug;
 use std::io::{Read, Result as Res, Write};
 
-use endio::{Deserialize, LE, LERead, LEWrite, Serialize};
+use endio::{Deserialize, LE, Serialize};
 use endio_bit::{BEBitReader, BEBitWriter};
 use lu_packets_derive::ReplicaSerde;
 
 use crate::common::{ObjId, LuVarWString, LVec};
-use crate::world::{Lot, LuNameValue};
 
 trait ReplicaD<R: Read>: Sized {
 	fn deserialize(reader: &mut BEBitReader<R>) -> Res<Self>;
@@ -76,10 +75,7 @@ pub trait ComponentProtocol {
 	type Serialization: ComponentSerialization;
 }
 
-pub trait ReplicaContext {
-	fn get_comp_constructions<R: Read>(&mut self, network_id: u16, lot: Lot, config: &Option<LuNameValue>) -> Vec<fn(&mut BEBitReader<R>) -> Res<Box<dyn ComponentConstruction>>>;
-	fn get_comp_serializations<R: Read>(&mut self, network_id: u16) -> Vec<fn(&mut BEBitReader<R>) -> Res<Box<dyn ComponentSerialization>>>;
-}
+pub trait ReplicaContext {}
 
 #[derive(Debug, PartialEq, ReplicaSerde)]
 pub struct ParentInfo {
@@ -102,10 +98,8 @@ pub struct ParentChildInfo {
 pub struct ReplicaConstruction {
 	pub network_id: u16,
 	pub object_id: ObjId,
-	pub lot: Lot,
 	pub name: LuVarWString<u8>,
 	pub time_since_created_on_server: u32,
-	pub config: Option<LuNameValue>,
 	pub is_trigger: bool,
 	pub spawner_id: Option<ObjId>,
 	pub spawner_node_id: Option<i32>,
@@ -125,71 +119,14 @@ impl PartialEq<ReplicaConstruction> for ReplicaConstruction {
 
 impl<R: Read + ReplicaContext> Deserialize<LE, R> for ReplicaConstruction {
 	#[rustfmt::skip]
-	fn deserialize(reader: &mut R) -> Res<Self> {
-		let mut bit_reader = BEBitReader::new(reader);
-		let bit = bit_reader.read_bit()?;
-		assert_eq!(bit, true);
-		let network_id = LERead::read(&mut bit_reader)?;
-		let object_id  = LERead::read(&mut bit_reader)?;
-		let lot        = LERead::read(&mut bit_reader)?;
-		let name       = LERead::read(&mut bit_reader)?;
-		let time_since_created_on_server = LERead::read(&mut bit_reader)?;
-		let config = ReplicaD::deserialize(&mut bit_reader)?;
-		let is_trigger = bit_reader.read_bit()?;
-		let spawner_id        = ReplicaD::deserialize(&mut bit_reader)?;
-		let spawner_node_id   = ReplicaD::deserialize(&mut bit_reader)?;
-		let scale             = ReplicaD::deserialize(&mut bit_reader)?;
-		let world_state       = ReplicaD::deserialize(&mut bit_reader)?;
-		let gm_level          = ReplicaD::deserialize(&mut bit_reader)?;
-		let parent_child_info = ReplicaD::deserialize(&mut bit_reader)?;
-		let mut components = vec![];
-		for new in unsafe {bit_reader.get_mut_unchecked()}.get_comp_constructions(network_id, lot, &config) {
-			components.push(new(&mut bit_reader)?);
-		}
-
-		Ok(Self {
-			network_id,
-			object_id,
-			lot,
-			name,
-			time_since_created_on_server,
-			config,
-			is_trigger,
-			spawner_id,
-			spawner_node_id,
-			scale,
-			world_state,
-			gm_level,
-			parent_child_info,
-			components,
-		})
+	fn deserialize(_reader: &mut R) -> Res<Self> {
+		todo!()
 	}
 }
 
 impl<'a, W: Write> Serialize<LE, W> for &'a ReplicaConstruction {
-	fn serialize(self, writer: &mut W) -> Res<()> {
-		let mut bit_writer = BEBitWriter::new(vec![]);
-		bit_writer.write_bit(true)?;
-		LEWrite::write(&mut bit_writer, self.network_id)?;
-		LEWrite::write(&mut bit_writer, self.object_id)?;
-		LEWrite::write(&mut bit_writer, self.lot)?;
-		LEWrite::write(&mut bit_writer, &self.name)?;
-		LEWrite::write(&mut bit_writer, self.time_since_created_on_server)?;
-		ReplicaS::serialize(&self.config, &mut bit_writer)?;
-		bit_writer.write_bit(self.is_trigger)?;
-		ReplicaS::serialize(&self.spawner_id, &mut bit_writer)?;
-		ReplicaS::serialize(&self.spawner_node_id, &mut bit_writer)?;
-		ReplicaS::serialize(&self.scale, &mut bit_writer)?;
-		ReplicaS::serialize(&self.world_state, &mut bit_writer)?;
-		ReplicaS::serialize(&self.gm_level, &mut bit_writer)?;
-		ReplicaS::serialize(&self.parent_child_info, &mut bit_writer)?;
-
-		for comp in &self.components {
-			comp.ser(&mut bit_writer)?;
-		}
-		bit_writer.flush()?;
-		LEWrite::write(writer, bit_writer.get_ref())?;
-		Ok(())
+	fn serialize(self, _writer: &mut W) -> Res<()> {
+		todo!()
 	}
 }
 
@@ -208,32 +145,14 @@ impl PartialEq<ReplicaSerialization> for ReplicaSerialization {
 }
 
 impl<R: Read + ReplicaContext> Deserialize<LE, R> for ReplicaSerialization {
-	fn deserialize(reader: &mut R) -> Res<Self> {
-		let network_id = LERead::read(reader)?;
-		let comp_desers = reader.get_comp_serializations(network_id);
-		let mut bit_reader = BEBitReader::new(reader);
-		let parent_child_info = ReplicaD::deserialize(&mut bit_reader)?;
-		let mut components = vec![];
-		for new in comp_desers {
-			components.push(new(&mut bit_reader)?);
-		}
-
-		Ok(Self { network_id, parent_child_info, components })
+	fn deserialize(_reader: &mut R) -> Res<Self> {
+		todo!()
 	}
 }
 
 impl<'a, W: Write> Serialize<LE, W> for &'a ReplicaSerialization {
-	fn serialize(self, writer: &mut W) -> Res<()> {
-		LEWrite::write(writer, self.network_id)?;
-		let mut bit_writer = BEBitWriter::new(vec![]);
-		ReplicaS::serialize(&self.parent_child_info, &mut bit_writer)?;
-
-		for comp in &self.components {
-			comp.ser(&mut bit_writer)?;
-		}
-		bit_writer.flush()?;
-		LEWrite::write(writer, bit_writer.get_ref())?;
-		Ok(())
+	fn serialize(self, _writer: &mut W) -> Res<()> {
+		todo!()
 	}
 }
 

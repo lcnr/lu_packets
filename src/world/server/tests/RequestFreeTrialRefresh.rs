@@ -1,1 +1,0 @@
-WorldMessage::RequestFreeTrialRefresh

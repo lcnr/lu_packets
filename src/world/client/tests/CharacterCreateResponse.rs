@@ -1,3 +1,0 @@
-ClientMessage::CharacterCreateResponse(
-	CharacterCreateResponse::Success,
-)
