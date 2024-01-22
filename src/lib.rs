@@ -134,7 +134,6 @@ macro_rules! lu {
 }
 
 pub mod raknet;
-pub mod auth;
 pub mod chat;
 pub mod common;
 pub mod general;
