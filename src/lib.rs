@@ -16,10 +16,6 @@ where
     default fn serialize(self) {}
 }
 
-impl<'a, W: Write> ReplicaS<W> for &'a bool {
-    fn serialize(self) {}
-}
-
 impl<W: Write, T> ReplicaS<W> for &Option<T>
 where
     for<'a> &'a T: ReplicaS<W> + Serialize<LE, BEBitWriter<W>>,
