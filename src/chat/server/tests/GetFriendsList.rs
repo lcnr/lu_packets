@@ -1,1 +1,0 @@
-ChatMessage::GetFriendsList
