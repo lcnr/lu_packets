@@ -4,134 +4,131 @@
 #![feature(specialization)]
 #![allow(incomplete_features)]
 
-/**
-	Creates an [`Amf3::Array`](crate::world::amf3::Amf3::Array) containing the arguments.
 
-	Since AMF3 arrays are both vectors and maps at the same time, there are multiple forms of the macro, for map and for vector usage.
+use std::fmt::Debug;
+use std::io::{Result as Res, Write};
 
-	### Map usage
+use endio::{LE, Serialize};
+use endio_bit::{BEBitWriter};
+use lu_packets_derive::ReplicaSerde;
 
-	The syntax is `name: value`, where `name` is a string literal that will be converted to an [`Amf3String`](crate::world::amf3::Amf3String), and `value` is an expression that will be converted to an [`Amf3`] object.
-
-	Example:
-
-	```
-	# #[macro_use] extern crate lu_packets;
-	# use lu_packets::amf3;
-	# fn main() {
-	amf3! {
-		"false": false,
-		"true": true,
-		"double1": 3.14f32,
-		"double2": 3.14f64,
-		"string": "string",
-		"array": amf3! { "inner": "array"},
-	};
-	# }
-	```
-
-	### Vector usage
-
-	The syntax is the exact same as with the [`vec!`] macro, except that the arguments will be converted to an [`Amf3`] object before being inserted.
-
-	Example:
-
-	```
-	# #[macro_use] extern crate lu_packets;
-	# use lu_packets::amf3;
-	# fn main() {
-	amf3! [true, false, true];
-	amf3! [true; 4];
-	# }
-	```
-
-	[`Amf3`]: crate::world::amf3::Amf3
-*/
-#[macro_export]
-macro_rules! amf3 {
-	{} => { $crate::world::amf3::Amf3::Array($crate::world::amf3::Amf3Array::new()) };
-	($($name:literal:$value:expr),+ $(,)?) => {
-		{
-			let mut array = $crate::world::amf3::Amf3Array::new();
-			$(array.map.insert(::std::convert::TryInto::try_into($name).unwrap(), ::std::convert::TryInto::try_into($value).unwrap());)*
-			$crate::world::amf3::Amf3::Array(array)
-		}
-	};
-	($value:expr; $n:expr) => {
-		{
-			let converted = ::std::convert::TryInto::try_into($value).unwrap();
-			let mut array = $crate::world::amf3::Amf3Array {
-				map: ::std::collections::HashMap::new(),
-				vec: vec![converted; $n],
-			};
-			$crate::world::amf3::Amf3::Array(array)
-		}
-	};
-	($($value:expr),+ $(,)?) => {
-		{
-			let mut array = $crate::world::amf3::Amf3Array::new();
-			$(array.vec.push(::std::convert::TryInto::try_into($value).unwrap());)*
-			$crate::world::amf3::Amf3::Array(array)
-		}
-	};
+trait ReplicaS<W: Write> {
+	fn serialize(self, writer: &mut BEBitWriter<W>) -> Res<()>;
 }
 
-/**
-	Creates a [`LuNameValue`] containing the arguments.
-
-	The syntax is `name: value`, where `name` is a string literal that will be converted to a [`LuVarWString<u32>`], and `value` is an expression that will be converted to an [`LnvValue`].
-
-	Example:
-
-	```
-	# #[macro_use] extern crate lu_packets;
-	# use lu_packets::lnv;
-	# fn main() {
-	lnv! {
-		"wstring": "string expression",
-		"i32": 42i32,
-		"f32": 3.14f32,
-		"f64": 3.14f64,
-		"u32": 42u32,
-		"bool": true,
-		"i64": i64::MAX,
-		"u64": u64::MAX,
-		"string": b"byte slice",
-	};
-	# }
-	```
-
-	Care should be taken with integer and float literals to suffix them with the correct type, as seen above. Rust assumes `i32` for integer and `f64` for float literals by default, which may not be what you want, and can lead to incorrect serialization.
-
-	[`LuNameValue`]: crate::world::LuNameValue
-	[`LuVarWString<u32>`]: crate::common::LuVarWString
-	[`LnvValue`]: crate::world::LnvValue
-*/
-#[macro_export]
-macro_rules! lnv {
-	{} => { $crate::world::LuNameValue::new() };
-	{$($name:literal:$value:expr,)*} => {
-		{
-			let mut lnv = $crate::world::LuNameValue::new();
-			$(lnv.insert(::std::convert::TryInto::try_into($name).unwrap(), $value.into());)*
-			lnv
-		}
+impl<'a, W: Write, T> ReplicaS<W> for &'a T
+where
+	&'a T: Serialize<LE, BEBitWriter<W>>,
+{
+	default fn serialize(self, writer: &mut BEBitWriter<W>) -> Res<()> {
+		Serialize::serialize(self, writer)
 	}
 }
 
-/**
-	Converts the argument to a LU string.
 
-	This forwards to the [`TryInto`] implementation on the argument, which means the macro is flexible and works with both string and wstring types, and both fixed and variable types, depending on context. Generally, to convert to a string type, pass a byte slice, and for a wstring type, pass a `&str` or `String`.
-
-	[`TryInto`]: std::convert::TryInto
-*/
-#[macro_export]
-macro_rules! lu {
-	($str_lit:expr) => {
-		::std::convert::TryInto::try_into($str_lit).unwrap()
-	};
+impl<'a, W: Write> ReplicaS<W> for &'a bool {
+	fn serialize(self, writer: &mut BEBitWriter<W>) -> Res<()> {
+		writer.write_bit(*self)
+	}
 }
 
-pub mod raknet;
-pub mod unified;
+impl<W: Write, T> ReplicaS<W> for &Option<T>
+where
+	for<'a> &'a T: ReplicaS<W> + Serialize<LE, BEBitWriter<W>>,
+{
+	fn serialize(self, writer: &mut BEBitWriter<W>) -> Res<()> {
+		writer.write_bit(self.is_some())?;
+		if let Some(x) = self {
+			ReplicaS::serialize(x, writer)?;
+		}
+		Ok(())
+	}
+}
+
+pub trait ComponentConstruction: Debug {
+	fn ser(&self, writer: &mut BEBitWriter<Vec<u8>>) -> Res<()>;
+}
+
+pub trait ComponentSerialization: Debug {
+	fn ser(&self, writer: &mut BEBitWriter<Vec<u8>>) -> Res<()>;
+}
+
+pub trait ComponentProtocol {
+	type Construction: ComponentConstruction;
+	type Serialization: ComponentSerialization;
+}
+
+pub trait ReplicaContext {}
+
+#[derive(Debug, PartialEq, ReplicaSerde)]
+pub struct ParentInfo {
+}
+
+#[derive(Debug, PartialEq, Serialize)]
+pub struct ChildInfo {}
+
+#[derive(Debug, PartialEq)]
+pub struct ParentChildInfo {
+	pub parent_info: Option<ParentInfo>,
+	pub child_info: Option<ChildInfo>,
+}
+
+#[derive(Debug)]
+pub struct ReplicaConstruction {}
+
+impl PartialEq<ReplicaConstruction> for ReplicaConstruction {
+	fn eq(&self, rhs: &ReplicaConstruction) -> bool {
+		// hacky but i don't know a better way
+		format!("{:?}", self) == format!("{:?}", rhs)
+	}
+}
+
+impl<'a, W: Write> Serialize<LE, W> for &'a ReplicaConstruction {
+	fn serialize(self, _writer: &mut W) -> Res<()> {
+		todo!()
+	}
+}
+
+#[derive(Debug)]
+pub struct ReplicaSerialization {
+	pub network_id: u16,
+	pub parent_child_info: Option<ParentChildInfo>,
+	pub components: Vec<Box<dyn ComponentSerialization>>,
+}
+
+impl PartialEq<ReplicaSerialization> for ReplicaSerialization {
+	fn eq(&self, rhs: &ReplicaSerialization) -> bool {
+		// hacky but i don't know a better way
+		format!("{:?}", self) == format!("{:?}", rhs)
+	}
+}
+
+impl<'a, W: Write> Serialize<LE, W> for &'a ReplicaSerialization {
+	fn serialize(self, _writer: &mut W) -> Res<()> {
+		todo!()
+	}
+}
+
+#[cfg(test)]
+#[derive(Debug)]
+pub(super) struct DummyContext<'a> {
+	pub(super) inner: &'a mut &'a [u8],
+}
+
+#[cfg(test)]
+impl Read for DummyContext<'_> {
+	fn read(&mut self, buf: &mut [u8]) -> Res<usize> {
+		Read::read(self.inner, buf)
+	}
+}
+
+#[cfg(test)]
+impl ReplicaContext for DummyContext<'_> {
+	fn get_comp_constructions<R: Read>(&mut self, _network_id: u16, _lot: Lot, _config: &Option<LuNameValue>) -> Vec<fn(&mut BEBitReader<R>) -> Res<Box<dyn ComponentConstruction>>> {
+		vec![]
+	}
+
+	fn get_comp_serializations<R: Read>(&mut self, _network_id: u16) -> Vec<fn(&mut BEBitReader<R>) -> Res<Box<dyn ComponentSerialization>>> {
+		vec![]
+	}
+}
