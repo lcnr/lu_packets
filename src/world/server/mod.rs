@@ -12,7 +12,6 @@ use lu_packets_derive::VariantTests;
 use crate::common::{ObjId, LuVarWString, LuWString33, LuWString42, ServiceId};
 use crate::chat::ChatChannel;
 use crate::chat::server::ChatMessage;
-use crate::raknet::client::replica::controllable_physics::FrameStats;
 use super::ZoneId;
 use super::gm::server::SubjectGameMessage;
 use self::mail::Mail;
@@ -254,22 +253,19 @@ pub enum RouteMessage {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct PositionUpdate {
-	pub frame_stats: FrameStats,
-}
+pub struct PositionUpdate {}
 
 impl<R: Read> Deserialize<LE, R> for PositionUpdate {
 	fn deserialize(reader: &mut R) -> Res<Self> {
 		let mut reader = BEBitReader::new(reader);
-		let frame_stats = LERead::read(&mut reader)?;
-		Ok(Self { frame_stats })
+		Ok(Self { })
 	}
 }
 
 impl<'a, W: Write> Serialize<LE, W> for &'a PositionUpdate {
 	fn serialize(self, writer: &mut W) -> Res<()> {
 		let mut writer = BEBitWriter::new(writer);
-		LEWrite::write(&mut writer, &self.frame_stats)
+		Ok(())
 	}
 }
 

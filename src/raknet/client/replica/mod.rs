@@ -1,38 +1,3 @@
-pub mod achievement_vendor;
-pub mod base_combat_ai;
-pub mod bbb;
-pub mod bouncer;
-pub mod buff;
-pub mod character;
-pub mod collectible;
-pub mod controllable_physics;
-pub mod donation_vendor;
-pub mod destroyable;
-pub mod fx;
-pub mod inventory;
-pub mod item;
-pub mod level_progression;
-pub mod lup_exhibit;
-pub mod mutable_model_behavior;
-pub mod module_assembly;
-pub mod moving_platform;
-pub mod phantom_physics;
-pub mod player_forced_movement;
-pub mod pet;
-pub mod possessable;
-pub mod possession_control;
-pub mod quickbuild;
-pub mod racing_control;
-pub mod rigid_body_phantom_physics;
-pub mod script;
-pub mod scripted_activity;
-pub mod shooting_gallery;
-pub mod simple_physics;
-pub mod skill;
-pub mod switch;
-pub mod vehicle_physics;
-pub mod vendor;
-
 use std::fmt::Debug;
 use std::io::{Read, Result as Res, Write};
 
