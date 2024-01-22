@@ -5,8 +5,6 @@ use endio::{Deserialize, LE, Serialize};
 use endio_bit::{BEBitReader, BEBitWriter};
 use lu_packets_derive::ReplicaSerde;
 
-use crate::common::{ObjId, LuVarWString, LVec};
-
 trait ReplicaD<R: Read>: Sized {
 	fn deserialize(reader: &mut BEBitReader<R>) -> Res<Self>;
 }
@@ -79,14 +77,10 @@ pub trait ReplicaContext {}
 
 #[derive(Debug, PartialEq, ReplicaSerde)]
 pub struct ParentInfo {
-	pub parent_id: ObjId,
-	pub update_position_with_parent: bool,
 }
 
 #[derive(Debug, Deserialize, PartialEq, Serialize)]
-pub struct ChildInfo {
-	pub child_ids: LVec<u16, ObjId>,
-}
+pub struct ChildInfo {}
 
 #[derive(Debug, PartialEq, ReplicaSerde)]
 pub struct ParentChildInfo {
@@ -95,20 +89,7 @@ pub struct ParentChildInfo {
 }
 
 #[derive(Debug)]
-pub struct ReplicaConstruction {
-	pub network_id: u16,
-	pub object_id: ObjId,
-	pub name: LuVarWString<u8>,
-	pub time_since_created_on_server: u32,
-	pub is_trigger: bool,
-	pub spawner_id: Option<ObjId>,
-	pub spawner_node_id: Option<i32>,
-	pub scale: Option<f32>,
-	pub world_state: Option<u8>, // todo: type
-	pub gm_level: Option<u8>,    // todo: type
-	pub parent_child_info: Option<ParentChildInfo>,
-	pub components: Vec<Box<dyn ComponentConstruction>>,
-}
+pub struct ReplicaConstruction {}
 
 impl PartialEq<ReplicaConstruction> for ReplicaConstruction {
 	fn eq(&self, rhs: &ReplicaConstruction) -> bool {

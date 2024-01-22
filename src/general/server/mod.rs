@@ -2,13 +2,11 @@
 use endio::{Deserialize, Serialize};
 use lu_packets_derive::VariantTests;
 
-use crate::common::ServiceId;
-
 #[derive(Debug, Deserialize, PartialEq, Serialize, VariantTests)]
 #[post_disc_padding = 1]
 #[repr(u32)]
 pub enum GeneralMessage {
-	Handshake(Handshake),
+	Noop,
 }
 
 /**
@@ -30,15 +28,4 @@ pub enum GeneralMessage {
 */
 #[derive(Debug, Deserialize, PartialEq, Serialize)]
 #[trailing_padding = 33]
-pub struct Handshake {
-	/// The network protocol version of the client. For unmodified live clients, this is `171022`. This was relevant mainly back when LU was actively updated. If you intend to make modifications to the protocol for your server project, you should change this to a different value.
-	pub network_version: u32,
-	#[padding = 4]
-	/// Service ID of the client, always [`ServiceId::Client`]. LU used this packet for all service communications, including server-to-server, which is the reason it's necessary to specify this.
-	pub service_id: ServiceId,
-	#[padding = 2]
-	/// Process ID of the client.
-	pub process_id: u32,
-	/// Local port of the client, not necessarily the same as the one the connection is from in case of NAT.
-	pub port: u16,
-}
+pub struct Handshake {}

@@ -2,15 +2,13 @@
 use endio::{Deserialize, Serialize};
 use lu_packets_derive::VariantTests;
 
-use crate::common::ServiceId;
 
 /// Client-received general messages.
 #[derive(Debug, Deserialize, PartialEq, Serialize, VariantTests)]
 #[post_disc_padding = 1]
 #[repr(u32)]
 pub enum GeneralMessage {
-	Handshake(Handshake),
-	DisconnectNotify(DisconnectNotify),
+	Noop,
 }
 
 /**
@@ -33,9 +31,6 @@ pub enum GeneralMessage {
 pub struct Handshake {
 	/// The network protocol version of the server. For servers compatible with live, this is `171022`. This was relevant mainly back when LU was actively updated. Server projects making modifications to the network protocol should set this to a different value.
 	pub network_version: u32,
-	/// Service ID of the server, [`ServiceId::Auth`] for auth servers, [`ServiceId::World`] for world servers.
-	#[padding = 4]
-	pub service_id: ServiceId,
 }
 
 /**
@@ -56,34 +51,5 @@ pub struct Handshake {
 #[derive(Debug, Deserialize, PartialEq, Serialize)]
 #[repr(u32)]
 pub enum DisconnectNotify {
-	/// Unspecified disconnect reason.
-	UnknownServerError,
-	/// The client's [`network_version`](super::server::Handshake::network_version) did not match the server's [`network_version`](Handshake::network_version). The message contains the server network version number.
-	WrongGameVersion(u32),
-	/// Unused for client-server.
-	WrongServerVersion(u32),
-	/// Connection attempt on invalid port, server emulators probably won't send this as they usually won't have server-server communication using LU's protocol.
-	ConnectionOnInvalidPort,
-	/// There was another login with your account and your session has been closed in favor of the new login.
-	DuplicateLogin,
-	/// The server is shutting down.
-	ServerShutdown,
-	/// No server hosting this map is available.
-	UnableToLoadMap,
-	/// The provided [`ClientValidation::session_key`](crate::world::server::ClientValidation::session_key) is incorrect.
-	InvalidSessionKey,
-	/// Server did not expect a [`ClientValidation`](crate::world::server::ClientValidation) at this time.
-	AccountNotInPendingList,
-	/// The provided [`CharacterLoginRequest::char_id`](crate::world::server::CharacterLoginRequest::char_id) was not a valid character ID of this account.
-	CharacterNotFound,
-	/// The character seems to be corrupted in the database.
-	CharacterCorruption,
-	/// You were kicked from the server.
-	Kick,
-	/// Error saving or loading progress.
-	SaveFailure,
-	/// The account's time-limited free trial expired, unused.
-	FreeTrialExpired,
-	/// The parental controls for this account prevent it from further play.
-	PlayScheduleTimeUp,
+	Noop,
 }
