@@ -286,18 +286,8 @@ dependencies = [
  "endio_bit",
  "flate2",
  "libsqlite3-sys",
- "lu_packets_derive",
  "rusqlite",
  "zip",
-]
-
-[[package]]
-name = "lu_packets_derive"
-version = "0.1.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
